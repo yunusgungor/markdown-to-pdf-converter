@@ -309,7 +309,7 @@ const App: React.FC = () => {
                       const match = /language-(\w+)/.exec(className || '');
                       if (!inline && match && match[1] === 'mermaid') {
                         return (
-                          <div className="mermaid-wrapper my-8 p-6 bg-slate-50 rounded-xl border border-slate-100 flex justify-center overflow-visible">
+                          <div className="mermaid-wrapper my-4 flex justify-center overflow-visible">
                             <Mermaid chart={String(children).replace(/\n$/, '')} />
                           </div>
                         );
