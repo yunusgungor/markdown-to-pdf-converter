@@ -116,6 +116,26 @@ body {
     page-break-inside: avoid;
 }
 
+/* Base Mermaid Styles (Preview) */
+.mermaid-wrapper {
+    width: 100%;
+    margin: 2rem 0;
+    transition: all 0.3s ease;
+}
+
+.mermaid {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.mermaid svg {
+    max-width: 100%;
+    height: auto !important;
+    width: 100% !important;
+    /* Force utilize available space */
+}
+
 .resize-handle {
     width: 4px;
     cursor: col-resize;
@@ -449,12 +469,11 @@ body {
     }
 
     .mermaid svg {
-        /* Scale down if larger than 90% of page, but maintain quality */
-        max-width: 90% !important;
-        max-height: 190mm !important;
+        /* Scale for print: use more space to ensure legibility */
+        max-width: 98% !important;
+        max-height: 220mm !important;
         height: auto !important;
         width: 100% !important;
-        /* Force width to take up defined max-width */
         object-fit: contain !important;
         display: block !important;
         margin: 0 auto !important;
