@@ -240,9 +240,7 @@ const App: React.FC = () => {
               <PlusCircle size={20} />
               <input type="file" accept=".md" className="hidden" onChange={handleFileUpload} />
             </label>
-            <button className="p-3 text-slate-400 dark:text-slate-600 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl transition-all" title="Tablo Ekle">
-              <TableIcon size={20} />
-            </button>
+
             <button
               onClick={() => { if (confirm('Tüm içeriği temizlemek istiyor musunuz?')) setMarkdown(''); }}
               className="p-3 text-slate-400 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
