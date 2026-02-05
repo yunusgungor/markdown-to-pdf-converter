@@ -130,10 +130,14 @@ body {
 }
 
 .mermaid svg {
-    max-width: 100%;
+    max-width: 100% !important;
+    max-height: 600px !important;
+    /* Cap height to prevent explosion in preview */
     height: auto !important;
-    width: 100% !important;
-    /* Force utilize available space */
+    width: auto !important;
+    /* Use natural width if possible */
+    display: block;
+    margin: 0 auto;
 }
 
 .resize-handle {
@@ -445,14 +449,15 @@ body {
     .mermaid-wrapper {
         width: 100% !important;
         max-width: 100% !important;
-        max-height: 200mm !important;
-        margin: 1rem 0 !important;
+        height: auto !important;
+        /* Allow growing to fit scaled content */
+        margin: 1.5rem 0 !important;
         padding: 0 !important;
         background: transparent !important;
         border: none !important;
         display: block !important;
-        overflow: visible !important;
-        /* Changed back to visible to ensure no clipping */
+        overflow: hidden !important;
+        /* Prevent overlap if content somehow overflows */
         break-inside: avoid !important;
         page-break-inside: avoid !important;
         page-break-before: auto !important;
@@ -469,11 +474,13 @@ body {
     }
 
     .mermaid svg {
-        /* Scale for print: use more space to ensure legibility */
-        max-width: 98% !important;
-        max-height: 220mm !important;
+        /* Balanced scale for print: Fit within page but don't explode vertically */
+        max-width: 100% !important;
+        max-height: 150mm !important;
+        /* Cap height to roughly 60% of A4 page */
         height: auto !important;
-        width: 100% !important;
+        width: auto !important;
+        /* Use natural width if possible */
         object-fit: contain !important;
         display: block !important;
         margin: 0 auto !important;
