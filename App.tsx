@@ -4,12 +4,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
-import { 
-  Download, 
-  Sparkles, 
-  Trash2, 
+import {
+  Download,
+  Sparkles,
+  Trash2,
   PlusCircle,
   Eye,
   Maximize2,
@@ -28,6 +26,8 @@ import {
 import Mermaid from './components/Mermaid';
 import { enhanceMarkdownContent } from './geminiService';
 import { AppStatus, ProcessingState, Theme } from './types';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 const INITIAL_MD = `# 🚀 Profesyonel PDF Dönüştürücü
 
@@ -48,7 +48,7 @@ Bu uygulama, karmaşık Markdown içeriklerini yüksek hassasiyetle PDF döküma
 
 ## 📐 Matematiksel Örnek
 $$
-E = mc^2 \quad \text{ve} \quad \int_a^b f(x)dx
+E = mc^2 \\quad \\text{ve} \\quad \\int_a^b f(x)dx
 $$
 
 \`\`\`mermaid
@@ -74,7 +74,7 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('app-theme');
     return (saved as Theme) || Theme.LIGHT;
   });
-  
+
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -130,44 +130,24 @@ const App: React.FC = () => {
     setStatus({ status: AppStatus.EXPORTING, message: 'Yüksek çözünürlüklü çıktı hazırlanıyor...' });
 
     try {
-      await new Promise(r => setTimeout(r, 1500));
+      const element = previewRef.current;
 
-      const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4',
-      });
+      const opt = {
+        margin: [10, 10, 10, 10] as [number, number, number, number], // kenar boşlukları (mm)
+        filename: `${title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
+        image: { type: 'jpeg' as 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          letterRendering: true,
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+      await html2pdf().set(opt).from(element).save();
 
-      const canvas = await html2canvas(previewRef.current, {
-        scale: 3, 
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        backgroundColor: '#ffffff', // PDF her zaman beyaz kalır
-        windowWidth: 850,
-      });
-
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save(`${title.toLowerCase().replace(/\s+/g, '-')}.pdf`);
       setStatus({ status: AppStatus.IDLE, message: 'PDF başarıyla indirildi!' });
       setTimeout(() => setStatus({ status: AppStatus.IDLE }), 3000);
     } catch (err) {
@@ -197,7 +177,7 @@ const App: React.FC = () => {
               <Layers size={22} />
             </div>
             <div className="hidden sm:block">
-              <input 
+              <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 rounded px-1 transition-all bg-transparent text-lg"
@@ -208,8 +188,8 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-          
-          <button 
+
+          <button
             onClick={() => setIsEditorVisible(!isEditorVisible)}
             className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all border ${isEditorVisible ? 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750' : 'bg-indigo-600 text-white border-indigo-600 shadow-md'}`}
           >
@@ -219,7 +199,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={toggleTheme}
             className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750 transition-all shadow-sm"
             title={theme === Theme.LIGHT ? "Karanlık Moda Geç" : "Aydınlık Moda Geç"}
@@ -227,7 +207,7 @@ const App: React.FC = () => {
             {theme === Theme.LIGHT ? <Moon size={20} /> : <Sun size={20} />}
           </button>
 
-          <button 
+          <button
             onClick={handleEnhance}
             disabled={status.status !== AppStatus.IDLE}
             className="group relative bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50"
@@ -236,7 +216,7 @@ const App: React.FC = () => {
             AI İyileştir
           </button>
 
-          <button 
+          <button
             onClick={exportToPdf}
             disabled={status.status !== AppStatus.IDLE}
             className="bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
@@ -252,14 +232,14 @@ const App: React.FC = () => {
         {/* Navigation Sidebar */}
         <div className="w-16 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center py-8 gap-8 bg-white dark:bg-slate-900 z-20 transition-colors duration-300">
           <div className="flex flex-col gap-4">
-            <button 
+            <button
               onClick={() => { setIsEditorVisible(true); setEditorWidth(window.innerWidth * 0.4); }}
               className={`p-3 rounded-2xl transition-all ${isEditorVisible ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
               title="Split Görünüm"
             >
               <Columns size={20} />
             </button>
-            <button 
+            <button
               onClick={() => setIsEditorVisible(false)}
               className={`p-3 rounded-2xl transition-all ${!isEditorVisible ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 dark:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
               title="Tam Önizleme"
@@ -267,7 +247,7 @@ const App: React.FC = () => {
               <Eye size={20} />
             </button>
           </div>
-          
+
           <div className="h-px w-8 bg-slate-100 dark:bg-slate-800"></div>
 
           <div className="flex flex-col gap-4">
@@ -278,8 +258,8 @@ const App: React.FC = () => {
             <button className="p-3 text-slate-400 dark:text-slate-600 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl transition-all" title="Tablo Ekle">
               <TableIcon size={20} />
             </button>
-            <button 
-              onClick={() => { if(confirm('Tüm içeriği temizlemek istiyor musunuz?')) setMarkdown(''); }}
+            <button
+              onClick={() => { if (confirm('Tüm içeriği temizlemek istiyor musunuz?')) setMarkdown(''); }}
               className="p-3 text-slate-400 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
               title="Temizle"
             >
@@ -289,7 +269,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Editor Area */}
-        <div 
+        <div
           style={{ width: isEditorVisible ? `${editorWidth}px` : '0px', transition: isResizing ? 'none' : 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}
           className="flex flex-col bg-white dark:bg-slate-900 overflow-hidden relative border-r border-slate-100 dark:border-slate-800 transition-colors duration-300"
         >
@@ -307,15 +287,15 @@ const App: React.FC = () => {
 
         {/* Resizer Handle */}
         {isEditorVisible && (
-          <div 
+          <div
             onMouseDown={() => setIsResizing(true)}
             className={`resize-handle ${isResizing ? 'resizing' : ''} dark:bg-slate-800 dark:hover:bg-indigo-500`}
           >
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col gap-1.5 opacity-20 dark:opacity-40 group-hover:opacity-100">
-               <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
-               <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
-               <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
-             </div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col gap-1.5 opacity-20 dark:opacity-40 group-hover:opacity-100">
+              <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
+              <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
+              <div className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
+            </div>
           </div>
         )}
 
@@ -327,14 +307,14 @@ const App: React.FC = () => {
               <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">A4 Canlı Render</span>
             </div>
             <div className="flex items-center gap-4 text-[10px] text-slate-400 dark:text-slate-500 font-bold">
-               <span className="italic">Çözünürlük: 300 DPI</span>
-               <Maximize2 size={13} className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer" />
+              <span className="italic">Çözünürlük: 300 DPI</span>
+              <Maximize2 size={13} className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer" />
             </div>
           </div>
-          
+
           <div className="flex-1 overflow-auto p-6 md:p-12 scroll-smooth">
             <div className="mx-auto flex justify-center pb-20">
-              <div 
+              <div
                 ref={previewRef}
                 className="bg-white w-full max-w-[800px] min-h-[1123px] paper-shadow px-[15mm] py-[20mm] md:px-[22mm] md:py-[25mm] text-slate-800 break-words prose-pdf origin-top transition-all hover:shadow-2xl rounded-[2px]"
               >
@@ -357,8 +337,8 @@ const App: React.FC = () => {
                         </code>
                       );
                     },
-                    table: ({children}) => <div className="table-responsive my-6"><table className="min-w-full">{children}</table></div>,
-                    img: ({src, alt}) => (
+                    table: ({ children }) => <div className="table-responsive my-6"><table className="min-w-full">{children}</table></div>,
+                    img: ({ src, alt }) => (
                       <div className="my-8 flex flex-col items-center">
                         <img src={src} alt={alt} className="shadow-md border border-slate-100" />
                         {alt && <span className="text-[10px] text-slate-400 mt-2 font-medium italic">{alt}</span>}
@@ -378,8 +358,8 @@ const App: React.FC = () => {
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-2 flex items-center justify-between text-[11px] font-bold text-slate-400 dark:text-slate-500 z-30 transition-colors duration-300">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-             <div className={`w-2 h-2 rounded-full ${status.status === AppStatus.IDLE ? 'bg-emerald-500' : 'bg-indigo-600 animate-pulse'}`}></div>
-             <span className="text-slate-600 dark:text-slate-400 uppercase tracking-tight">{status.message || 'Sistem Hazır'}</span>
+            <div className={`w-2 h-2 rounded-full ${status.status === AppStatus.IDLE ? 'bg-emerald-500' : 'bg-indigo-600 animate-pulse'}`}></div>
+            <span className="text-slate-600 dark:text-slate-400 uppercase tracking-tight">{status.message || 'Sistem Hazır'}</span>
           </div>
           <div className="h-3 w-px bg-slate-200 dark:bg-slate-800"></div>
           <div className="flex gap-4 opacity-50 uppercase tracking-tighter">
