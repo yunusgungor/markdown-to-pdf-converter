@@ -3,12 +3,15 @@
 @tailwind utilities;
 
 /* Custom Styles moved from index.html */
-body { 
-    font-family: 'Inter', sans-serif; 
+body {
+    font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
-.editor-font { font-family: 'JetBrains Mono', monospace; }
+
+.editor-font {
+    font-family: 'JetBrains Mono', monospace;
+}
 
 /* PDF Export Optimization */
 .prose-pdf {
@@ -19,44 +22,82 @@ body {
     width: 100%;
 }
 
-.prose-pdf h1, .prose-pdf h2, .prose-pdf h3 { 
-    page-break-after: avoid; 
+.prose-pdf h1,
+.prose-pdf h2,
+.prose-pdf h3 {
+    page-break-after: avoid;
     break-after: avoid;
 }
 
-.prose-pdf h1 { font-weight: 800; color: #0f172a; border-bottom: 2pt solid #e2e8f0; padding-bottom: 0.5rem; margin-top: 2rem; margin-bottom: 1rem; font-size: 24pt; }
-.prose-pdf h2 { font-weight: 700; color: #1e293b; margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 18pt; }
-.prose-pdf p { margin-bottom: 1rem; text-align: justify; widows: 2; orphans: 2; }
+.prose-pdf h1 {
+    font-weight: 800;
+    color: #0f172a;
+    border-bottom: 2pt solid #e2e8f0;
+    padding-bottom: 0.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-size: 24pt;
+}
 
-.prose-pdf table { 
-    border-collapse: separate; 
-    border-spacing: 0; 
-    width: 100%; 
-    margin: 1.5rem 0; 
+.prose-pdf h2 {
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    font-size: 18pt;
+}
+
+.prose-pdf p {
+    margin-bottom: 1rem;
+    text-align: justify;
+    widows: 2;
+    orphans: 2;
+}
+
+.prose-pdf table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    margin: 1.5rem 0;
     border: 0.5pt solid #cbd5e1;
     border-radius: 4px;
     page-break-inside: avoid;
     break-inside: avoid;
 }
-.prose-pdf th { 
-    background-color: #f8fafc; 
-    font-weight: 700; 
-    border-bottom: 0.5pt solid #cbd5e1; 
-    border-right: 0.5pt solid #cbd5e1; 
-    padding: 10px 14px; 
+
+.prose-pdf th {
+    background-color: #f8fafc;
+    font-weight: 700;
+    border-bottom: 0.5pt solid #cbd5e1;
+    border-right: 0.5pt solid #cbd5e1;
+    padding: 10px 14px;
     text-align: left;
 }
-.prose-pdf td { 
-    border-bottom: 0.5pt solid #f1f5f9; 
-    border-right: 0.5pt solid #cbd5e1; 
-    padding: 8px 14px; 
+
+.prose-pdf td {
+    border-bottom: 0.5pt solid #f1f5f9;
+    border-right: 0.5pt solid #cbd5e1;
+    padding: 8px 14px;
     background-color: #ffffff;
 }
-.prose-pdf tr:nth-child(even) td { background-color: #f9fafb; }
-.prose-pdf th:last-child, .prose-pdf td:last-child { border-right: none; }
-.prose-pdf tr:last-child td { border-bottom: none; }
 
-.katex-display { margin: 1.5rem 0; page-break-inside: avoid; }
+.prose-pdf tr:nth-child(even) td {
+    background-color: #f9fafb;
+}
+
+.prose-pdf th:last-child,
+.prose-pdf td:last-child {
+    border-right: none;
+}
+
+.prose-pdf tr:last-child td {
+    border-bottom: none;
+}
+
+.katex-display {
+    margin: 1.5rem 0;
+    page-break-inside: avoid;
+}
 
 .page-break {
     page-break-before: always;
@@ -83,7 +124,9 @@ body {
     z-index: 30;
     background-color: #e2e8f0;
 }
-.resize-handle:hover, .resize-handle.resizing {
+
+.resize-handle:hover,
+.resize-handle.resizing {
     background-color: #6366f1;
     width: 6px;
 }
@@ -97,8 +140,135 @@ body {
     background-size: 24px 24px;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-.dark ::-webkit-scrollbar-thumb { background: #475569; }
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
 
-.is-resizing { user-select: none; pointer-events: none; }
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+.is-resizing {
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Print Styles for PDF Export */
+@media print {
+    @page {
+        size: A4;
+        margin: 20mm 15mm !important;
+    }
+
+    /* Force all parent containers to be visible and flow naturally */
+    html,
+    body,
+    #root,
+    #root>div,
+    main,
+    .preview-container,
+    .preview-container>div,
+    .mx-auto.flex.justify-center,
+    .flex-1.overflow-auto {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: none !important;
+        background: white !important;
+        color: black !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    /* Hide UI controls */
+    header,
+    footer,
+    nav,
+    aside,
+    .no-print,
+    .resize-handle,
+    .bg-white\/70.dark\:bg-slate-900\/70,
+    div[style*="width: 0px"],
+    button,
+    .lucide {
+        display: none !important;
+    }
+
+    /* Target the döküman itself */
+    .prose-pdf {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        font-size: 11pt !important;
+        line-height: 1.6 !important;
+    }
+
+    /* KaTeX - Optimize for long formulas to prevent page-wide scaling issues */
+    .katex-display {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        /* Hide to prevent scaling document down */
+        overflow-y: hidden !important;
+        margin: 1.5rem 0 !important;
+        display: block !important;
+        text-align: center !important;
+        page-break-inside: auto !important;
+        /* Allow natural flow */
+    }
+
+    .katex {
+        font-size: 0.85em !important;
+        /* Shrink slightly in print to fit better */
+        white-space: normal !important;
+        /* Allow wrapping if KaTeX supports it, or just protect width */
+    }
+
+    /* Mermaid - Adaptive Scaling */
+    .mermaid-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 2rem 0 !important;
+        display: block !important;
+        overflow: visible !important;
+        page-break-inside: auto !important;
+        /* Huge diagrams can break across pages */
+    }
+
+    .mermaid {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+
+    .mermaid svg {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 100px !important;
+        /* Prevent from becoming "tiny" */
+    }
+
+    /* Global Dark Mode Fix for print */
+    .dark * {
+        color: black !important;
+        background: transparent !important;
+        border-color: #cbd5e1 !important;
+    }
+}

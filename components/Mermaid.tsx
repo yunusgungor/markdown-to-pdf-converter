@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+import mermaid from 'mermaid';
 
 mermaid.initialize({
   startOnLoad: false,
@@ -22,8 +22,21 @@ const Mermaid: React.FC<MermaidProps> = ({ chart }) => {
           ref.current.removeAttribute('data-processed');
           const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
           const { svg } = await mermaid.render(id, chart);
+
           if (ref.current) {
+            // SVG'yi direkt göster - inline SVG html2canvas tarafından daha iyi desteklenir
             ref.current.innerHTML = svg;
+
+            // SVG elementine özel stil ekle (PDF uyumluluğu için)
+            const svgElement = ref.current.querySelector('svg');
+            if (svgElement) {
+              svgElement.style.maxWidth = '100%';
+              svgElement.style.height = 'auto';
+              svgElement.style.display = 'block';
+              svgElement.style.margin = '0 auto';
+              // PDF için önemli: background rengi
+              svgElement.style.backgroundColor = 'white';
+            }
           }
         } catch (error) {
           console.error("Mermaid Render Error:", error);

@@ -126,34 +126,19 @@ const App: React.FC = () => {
   };
 
   const exportToPdf = async () => {
-    if (!previewRef.current) return;
-    setStatus({ status: AppStatus.EXPORTING, message: 'Yüksek çözünürlüklü çıktı hazırlanıyor...' });
+    setStatus({ status: AppStatus.EXPORTING, message: 'Yazdırma menüsü hazırlanıyor...' });
 
-    try {
-      const element = previewRef.current;
-
-      const opt = {
-        margin: [10, 10, 10, 10] as [number, number, number, number], // kenar boşlukları (mm)
-        filename: `${title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
-        image: { type: 'jpeg' as 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          letterRendering: true,
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-
-      await html2pdf().set(opt).from(element).save();
-
-      setStatus({ status: AppStatus.IDLE, message: 'PDF başarıyla indirildi!' });
-      setTimeout(() => setStatus({ status: AppStatus.IDLE }), 3000);
-    } catch (err) {
-      console.error(err);
-      setStatus({ status: AppStatus.ERROR, message: 'PDF Hatası' });
-    }
+    // Küçük bir gecikme ile UI'ın/Status'un güncellenmesini bekle
+    setTimeout(() => {
+      try {
+        window.print();
+        setStatus({ status: AppStatus.IDLE, message: 'Hazır' });
+        setTimeout(() => setStatus({ status: AppStatus.IDLE }), 2000);
+      } catch (err) {
+        console.error('Print Error:', err);
+        setStatus({ status: AppStatus.ERROR, message: 'Yazdırma hatası' });
+      }
+    }, 500);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,7 +155,7 @@ const App: React.FC = () => {
   return (
     <div className={`min-h-screen flex flex-col h-screen overflow-hidden bg-white dark:bg-slate-950 transition-colors duration-300 ${isResizing ? 'is-resizing' : ''}`}>
       {/* Header Panel */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 flex items-center justify-between z-30 shadow-sm transition-colors duration-300">
+      <header className="no-print bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 flex items-center justify-between z-30 shadow-sm transition-colors duration-300">
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-3">
             <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-100 dark:shadow-none">
@@ -230,7 +215,7 @@ const App: React.FC = () => {
       {/* Main Workspace */}
       <main ref={containerRef} className="flex-1 flex overflow-hidden">
         {/* Navigation Sidebar */}
-        <div className="w-16 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center py-8 gap-8 bg-white dark:bg-slate-900 z-20 transition-colors duration-300">
+        <div className="no-print w-16 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center py-8 gap-8 bg-white dark:bg-slate-900 z-20 transition-colors duration-300">
           <div className="flex flex-col gap-4">
             <button
               onClick={() => { setIsEditorVisible(true); setEditorWidth(window.innerWidth * 0.4); }}
@@ -271,7 +256,7 @@ const App: React.FC = () => {
         {/* Editor Area */}
         <div
           style={{ width: isEditorVisible ? `${editorWidth}px` : '0px', transition: isResizing ? 'none' : 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}
-          className="flex flex-col bg-white dark:bg-slate-900 overflow-hidden relative border-r border-slate-100 dark:border-slate-800 transition-colors duration-300"
+          className="no-print flex flex-col bg-white dark:bg-slate-900 overflow-hidden relative border-r border-slate-100 dark:border-slate-800 transition-colors duration-300"
         >
           <div className="bg-slate-50/50 dark:bg-slate-800/50 px-6 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between whitespace-nowrap">
             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Markdown Kaynağı</span>
@@ -320,7 +305,7 @@ const App: React.FC = () => {
               >
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
+                  rehypePlugins={[[rehypeKatex, { strict: false }]]}
                   components={{
                     code({ node, inline, className, children, ...props }: any) {
                       const match = /language-(\w+)/.exec(className || '');
@@ -376,7 +361,7 @@ const App: React.FC = () => {
 
       {/* Processing Overlay */}
       {(status.status === AppStatus.PROCESSING || status.status === AppStatus.EXPORTING) && (
-        <div className="fixed inset-0 bg-slate-900/10 dark:bg-slate-950/40 backdrop-blur-[6px] z-[100] flex items-center justify-center animate-in fade-in zoom-in duration-300">
+        <div className="no-print fixed inset-0 bg-slate-900/10 dark:bg-slate-950/40 backdrop-blur-[6px] z-[100] flex items-center justify-center animate-in fade-in zoom-in duration-300">
           <div className="bg-white dark:bg-slate-900 p-14 rounded-[4rem] shadow-2xl border border-white dark:border-slate-800 flex flex-col items-center gap-8 text-center max-w-sm">
             <div className="relative">
               <div className="w-24 h-24 border-[6px] border-slate-100 dark:border-slate-800 border-t-indigo-600 rounded-full animate-spin"></div>
