@@ -238,31 +238,49 @@ body {
         /* Allow wrapping if KaTeX supports it, or just protect width */
     }
 
-    /* Mermaid - Adaptive Scaling */
+    /* Mermaid - Aesthetic Scaling & Optimized Space */
     .mermaid-wrapper {
         width: 100% !important;
         max-width: 100% !important;
-        margin: 2rem 0 !important;
+        max-height: 200mm !important;
+        margin: 1rem 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
         display: block !important;
         overflow: visible !important;
-        page-break-inside: auto !important;
-        /* Huge diagrams can break across pages */
+        /* Changed back to visible to ensure no clipping */
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        page-break-before: auto !important;
     }
 
     .mermaid {
         width: 100% !important;
         max-width: 100% !important;
         height: auto !important;
-        display: flex !important;
-        justify-content: center !important;
+        display: block !important;
+        text-align: center !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
     }
 
     .mermaid svg {
-        width: 100% !important;
-        max-width: 100% !important;
+        /* Scale down if larger than 90% of page, but maintain quality */
+        max-width: 90% !important;
+        max-height: 190mm !important;
         height: auto !important;
-        min-height: 100px !important;
-        /* Prevent from becoming "tiny" */
+        width: 100% !important;
+        /* Force width to take up defined max-width */
+        object-fit: contain !important;
+        display: block !important;
+        margin: 0 auto !important;
+    }
+
+    /* Print specific optimization */
+    .prose-pdf .mermaid-wrapper {
+        padding: 0 !important;
+        background: transparent !important;
     }
 
     /* Global Dark Mode Fix for print */

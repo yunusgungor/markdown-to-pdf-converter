@@ -6,6 +6,7 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'default',
   securityLevel: 'loose',
+  fontFamily: 'Inter',
 });
 
 interface MermaidProps {
@@ -21,21 +22,27 @@ const Mermaid: React.FC<MermaidProps> = ({ chart }) => {
         try {
           ref.current.removeAttribute('data-processed');
           const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+
+          // Render with useMaxWidth: true in the render options if possible, 
+          // but mermaid.render doesn't take many options. 
+          // We'll handle it via CSS and individual SVG manipulation.
           const { svg } = await mermaid.render(id, chart);
 
           if (ref.current) {
-            // SVG'yi direkt göster - inline SVG html2canvas tarafından daha iyi desteklenir
             ref.current.innerHTML = svg;
 
-            // SVG elementine özel stil ekle (PDF uyumluluğu için)
             const svgElement = ref.current.querySelector('svg');
             if (svgElement) {
+              // Sadece style üzerinden müdahale et, öznitelikleri (attributes) tamamen silme
+              // Bu sayede tarayıcı intrinsic aspect ratio'yu koruyabilir.
               svgElement.style.maxWidth = '100%';
               svgElement.style.height = 'auto';
               svgElement.style.display = 'block';
               svgElement.style.margin = '0 auto';
-              // PDF için önemli: background rengi
               svgElement.style.backgroundColor = 'white';
+
+              // Mobilde veya küçük alanlarda taşmayı önle
+              svgElement.style.width = '100%';
             }
           }
         } catch (error) {
