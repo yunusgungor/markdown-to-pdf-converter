@@ -182,12 +182,23 @@ body {
         overflow: visible !important;
         position: static !important;
         width: 100% !important;
-        max-width: none !important;
         background: white !important;
         color: black !important;
         margin: 0 !important;
-        padding: 0 !important;
         box-shadow: none !important;
+        /* BOX SIZING IS CRITICAL FOR TABLES */
+        box-sizing: border-box !important;
+    }
+
+    * {
+        box-sizing: border-box !important;
+    }
+
+    /* Force remove all shadows and rounding that obscure borders in print */
+    * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        border-radius: 0 !important;
     }
 
     /* Hide UI controls */
@@ -200,21 +211,94 @@ body {
     .bg-white\/70.dark\:bg-slate-900\/70,
     div[style*="width: 0px"],
     button,
-    .lucide {
+    .lucide,
+    .paper-shadow {
         display: none !important;
     }
 
-    /* Target the döküman itself */
+    /* Target the white paper container explicitly to remove its shadow/rounding */
+    .paper-shadow,
+    [class*="paper-shadow"],
+    [class*="rounded-"] {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background: white !important;
+        border: none !important;
+    }
+
+    /* Target the döküman itself with safety margins */
     .prose-pdf {
         display: block !important;
         width: 100% !important;
+        max-width: 100% !important;
         height: auto !important;
         min-height: 0 !important;
         margin: 0 !important;
-        padding: 0 !important;
+        /* Padding is critical to prevent borders from being clipped by page edges */
+        padding: 2mm !important;
         overflow: visible !important;
         font-size: 11pt !important;
-        line-height: 1.6 !important;
+        line-height: 1.65 !important;
+        color: #0f172a !important;
+        text-align: justify !important;
+        hyphens: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Automatic Page Numbering */
+    body {
+        counter-reset: page;
+    }
+
+    .prose-pdf::after {
+        content: "";
+        display: block;
+        page-break-after: always;
+    }
+
+    /* Blockquotes - Premium Look */
+    .prose-pdf blockquote {
+        border-left: 3pt solid #6366f1 !important;
+        padding: 1rem 1.5rem !important;
+        margin: 1.5rem 0 !important;
+        background-color: #f8fafc !important;
+        font-style: italic !important;
+        color: #475569 !important;
+        break-inside: avoid !important;
+    }
+
+    /* Professional Lists */
+    .prose-pdf ul,
+    .prose-pdf ol {
+        padding-left: 1.5rem !important;
+        margin-bottom: 1.2rem !important;
+    }
+
+    .prose-pdf li {
+        margin-bottom: 0.5rem !important;
+        padding-left: 0.5rem !important;
+    }
+
+    /* Print URLs next to links */
+    .prose-pdf a[href^="http"]::after {
+        content: " (" attr(href) ")" !important;
+        font-size: 0.85em !important;
+        color: #64748b !important;
+        font-weight: normal !important;
+    }
+
+    /* Subtle Headers */
+    .prose-pdf h1 {
+        font-size: 28pt !important;
+        margin-top: 0 !important;
+        border-bottom: 1.5pt solid #6366f1 !important;
+    }
+
+    .prose-pdf h2 {
+        font-size: 20pt !important;
+        border-left: 4pt solid #cbd5e1;
+        padding-left: 12px;
+        margin-top: 2.5rem !important;
     }
 
     /* KaTeX - Optimize for long formulas to prevent page-wide scaling issues */
@@ -236,6 +320,105 @@ body {
         /* Shrink slightly in print to fit better */
         white-space: normal !important;
         /* Allow wrapping if KaTeX supports it, or just protect width */
+    }
+
+    /* Page Break Utility */
+    .page-break {
+        page-break-before: always !important;
+        break-before: page !important;
+        height: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Professional Code Blocks in Print */
+    .prose-pdf pre {
+        background-color: #f8fafc !important;
+        border: 1pt solid #e2e8f0 !important;
+        border-radius: 6pt !important;
+        padding: 1.25rem !important;
+        margin: 1.5rem 0 !important;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+        font-size: 9.5pt !important;
+        line-height: 1.5 !important;
+        overflow: visible !important;
+        white-space: pre-wrap !important;
+        break-inside: avoid !important;
+    }
+
+    .prose-pdf code:not(pre code) {
+        background-color: #f1f5f9 !important;
+        color: #4338ca !important;
+        padding: 0.2rem 0.4rem !important;
+        border-radius: 3pt !important;
+        font-size: 0.9em !important;
+        font-weight: 500 !important;
+    }
+
+    /* Professional Fully-Boxed Tables - Unified Borders */
+    .prose-pdf table {
+        border-collapse: collapse !important;
+        width: calc(100% - 2mm) !important;
+        max-width: calc(100% - 2mm) !important;
+        table-layout: fixed !important;
+        border: 1pt solid #0f172a !important;
+        /* Unified dark border */
+        margin: 2.5rem auto !important;
+        page-break-inside: avoid !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+    }
+
+    .prose-pdf thead th {
+        border: 1pt solid #0f172a !important;
+        /* Match table and td */
+        background-color: #f8fafc !important;
+        color: #0f172a !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        font-size: 8.5pt !important;
+        padding: 10px 8px !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        font-weight: 700 !important;
+    }
+
+    .prose-pdf tbody td {
+        border: 1pt solid #0f172a !important;
+        /* Match table and th */
+        padding: 8px 8px !important;
+        font-size: 9.5pt !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        vertical-align: top !important;
+    }
+
+    /* Target long tables that might still overflow */
+    .table-responsive {
+        width: 100% !important;
+        overflow: visible !important;
+    }
+
+    /* Drop Cap - Optional Professional Touch */
+    .prose-pdf>p:first-of-type::first-letter {
+        float: left;
+        font-size: 4.2em;
+        line-height: 0.8;
+        padding-top: 4px;
+        padding-right: 12px;
+        padding-left: 3px;
+        font-weight: 800;
+        color: #1e2a4a;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Image Captions */
+    .prose-pdf .img-caption {
+        text-align: center;
+        font-size: 9pt;
+        color: #64748b;
+        margin-top: -1rem;
+        margin-bottom: 2rem;
+        font-style: italic;
     }
 
     /* Mermaid - Aesthetic Scaling & Optimized Space */
