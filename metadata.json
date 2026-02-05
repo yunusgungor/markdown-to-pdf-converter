@@ -1,0 +1,5 @@
+{
+  "name": "Markdown AI PDF Converter",
+  "description": "A sophisticated Markdown to PDF converter powered by AI. Supports Mermaid diagrams, LaTeX math, tables, and rich formatting with AI-driven content optimization.",
+  "requestFramePermissions": []
+}
