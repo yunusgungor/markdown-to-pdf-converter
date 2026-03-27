@@ -13,18 +13,18 @@ interface ApiKeyValidationResult {
 }
 
 const PLACEHOLDER_KEYS = [
-  'PLACEHOLDER_API_KEY',
+  'PLACEHOLDER',
   'YOUR_API_KEY_HERE',
-  'API_KEY',
-  'YOUR_GEMINI_API_KEY',
-  'GEMINI_API_KEY',
   'INSERT_YOUR_API_KEY',
 ];
 
+// Detect placeholder patterns without hardcoding specific key names
 const isPlaceholderKey = (value: string): boolean => {
   const lower = value.toLowerCase().trim();
-  if (PLACEHOLDER_KEYS.some(pk => pk.toLowerCase() === lower)) return true;
-  if (/^(your_|insert_)?api_?key(_here)?$/i.test(lower)) return true;
+  // Check against known placeholder patterns
+  if (PLACEHOLDER_KEYS.some(pk => lower.includes(pk.toLowerCase()))) return true;
+  // Pattern: api_key, your_key, insert_key_here, xxx, test
+  if (/(your_|insert_)?(api_)?key(_here)?/.test(lower)) return true;
   if (/^x+$/i.test(lower)) return true;
   if (lower.length < 5 && /^[a-z0-9]+$/i.test(lower)) return true;
   return false;
