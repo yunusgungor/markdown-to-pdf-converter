@@ -134,10 +134,11 @@ const createMarkdownSections = (content: string): MarkdownSection[] => {
       continue;
     }
 
+    const isHeading = /^#{1,6}\s/.test(block);
     sections.push({
       type: 'section',
       content: block,
-      keepWithNext: keepWithNext || /^#{1,6}\s/.test(block)
+      keepWithNext: keepWithNext || isHeading
     });
     keepWithNext = false;
   }
@@ -287,6 +288,24 @@ const createPaginatedExportRoot = (
   if (lastPage) {
     lastPage.style.breakAfter = 'auto';
     lastPage.style.pageBreakAfter = 'auto';
+  }
+
+  const EMPTY_SPACE_THRESHOLD = 150;
+  for (let i = 0; i < pages.length - 1; i += 1) {
+    const currentPageEl = pages[i];
+    const nextPageEl = pages[i + 1];
+    const currentHeight = currentPageEl.scrollHeight;
+    const pageHeight = currentPageEl.clientHeight;
+    const remainingSpace = pageHeight - currentHeight;
+
+    if (remainingSpace > EMPTY_SPACE_THRESHOLD && nextPageEl.children.length > 0) {
+      const firstChild = nextPageEl.firstElementChild;
+      if (firstChild) {
+        nextPageEl.removeChild(firstChild);
+        currentPageEl.appendChild(firstChild);
+        currentApproxHeight += firstChild.scrollHeight;
+      }
+    }
   }
 
   return exportRoot;
