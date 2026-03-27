@@ -29,39 +29,7 @@ import { AppStatus, GeminiServiceError, ProcessingState, Theme } from './types';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
-const INITIAL_MD = `# 🚀 Profesyonel PDF Dönüştürücü
-
-Bu uygulama, karmaşık Markdown içeriklerini yüksek hassasiyetle PDF dökümanına çevirir.
-
-## 📦 Temel Özellikler
-1. **Mermaid Diyagramları**: Tam çözünürlüklü SVG aktarımı.
-2. **Tablo Yönetimi**: A4 genişliğine tam uyumlu tablolar.
-3. **Matematiksel Formüller**: KaTeX motoru ile kusursuz render.
-4. **Emoji Desteği**: Gece modunda da parlayan emojiler 🚀🔥✨.
-
-| Özellik | Durum | Teknoloji |
-| :--- | :---: | :--- |
-| **Diyagram** | ✅ | Mermaid.js |
-| **Tema Desteği**| ✅ | Dark / Light |
-| **Formül** | ✅ | KaTeX |
-| **AI Optimizasyon** | ✅ | Gemini 3 |
-
-## 📐 Matematiksel Örnek
-$$
-E = mc^2 \\quad \\text{ve} \\quad \\int_a^b f(x)dx
-$$
-
-\`\`\`mermaid
-graph LR
-    MD[Markdown Giriş] --> Theme{Tema Seçimi}
-    Theme -- Dark --> DarkUI[Gece Modu]
-    Theme -- Light --> LightUI[Aydınlık Mod]
-    DarkUI --> PDF[High-Res PDF]
-    LightUI --> PDF
-\`\`\`
-
-> Not: PDF çıktısı her zaman profesyonel beyaz kağıt standardında üretilir.
-`;
+const INITIAL_MD = ``;
 
 const PAGE_BREAK_TOKEN = '<<<PAGE_BREAK>>>';
 const KEEP_WITH_NEXT_TOKEN = '<<<KEEP_WITH_NEXT>>>';
