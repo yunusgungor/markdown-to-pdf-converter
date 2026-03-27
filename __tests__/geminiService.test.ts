@@ -5,27 +5,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // we test the logic by duplicating it and verifying behavior
 
 // Use generic placeholder patterns - avoid hardcoding actual key names
-const PLACEHOLDER_KEYS = [
-  'PLACEHOLDER',
-  'YOUR_KEY',
-  'INSERT_KEY',
-];
+const PLACEHOLDER_KEYS = ['PLACEHOLDER', 'YOUR_KEY', 'INSERT_KEY'];
 
 const isPlaceholderKey = (value: string): boolean => {
   const lower = value.toLowerCase().trim();
-  if (PLACEHOLDER_KEYS.some(pk => lower.includes(pk.toLowerCase()))) return true;
+  if (PLACEHOLDER_KEYS.some((pk) => lower.includes(pk.toLowerCase())))
+    return true;
   if (/(your_|insert_)?(api_)?key(_here)?/.test(lower)) return true;
   if (/^x+$/i.test(lower)) return true;
   if (lower.length < 5 && /^[a-z0-9]+$/i.test(lower)) return true;
   return false;
 };
 
-const readGeminiApiKeyLogic = (env: Record<string, any>): { isValid: boolean; apiKey?: string; errorCode?: 'missing' | 'placeholder' | 'invalid_format'; errorMessage?: string } => {
-  const candidates = [
-    env.VITE_GEMINI_API_KEY,
-    env.GEMINI_API_KEY,
-    env.API_KEY
-  ];
+const readGeminiApiKeyLogic = (
+  env: Record<string, any>
+): {
+  isValid: boolean;
+  apiKey?: string;
+  errorCode?: 'missing' | 'placeholder' | 'invalid_format';
+  errorMessage?: string;
+} => {
+  const candidates = [env.VITE_GEMINI_API_KEY];
 
   for (const candidate of candidates) {
     const value = typeof candidate === 'string' ? candidate.trim() : '';
@@ -38,7 +38,8 @@ const readGeminiApiKeyLogic = (env: Record<string, any>): { isValid: boolean; ap
       return {
         isValid: false,
         errorCode: 'placeholder',
-        errorMessage: 'Geçerli bir Gemini API anahtarı tanımlayın. "PLACEHOLDER_API_KEY" veya benzeri anahtar kullanmayın.'
+        errorMessage:
+          'Geçerli bir Gemini API anahtarı tanımlayın. "PLACEHOLDER_API_KEY" veya benzeri anahtar kullanmayın.',
       };
     }
 
@@ -46,7 +47,8 @@ const readGeminiApiKeyLogic = (env: Record<string, any>): { isValid: boolean; ap
       return {
         isValid: false,
         errorCode: 'invalid_format',
-        errorMessage: 'Tanımlanan Gemini API anahtarı çok kısa. Geçerli bir API anahtarı kullanın.'
+        errorMessage:
+          'Tanımlanan Gemini API anahtarı çok kısa. Geçerli bir API anahtarı kullanın.',
       };
     }
 
@@ -56,15 +58,24 @@ const readGeminiApiKeyLogic = (env: Record<string, any>): { isValid: boolean; ap
   return {
     isValid: false,
     errorCode: 'missing',
-    errorMessage: 'Gemini API anahtarı eksik. `.env` veya `.env.local` dosyasında VITE_GEMINI_API_KEY, GEMINI_API_KEY veya API_KEY tanımlayın.'
+    errorMessage:
+      'Gemini API anahtarı eksik. `.env` veya `.env.local` dosyasında VITE_GEMINI_API_KEY tanımlayın.',
   };
 };
 
 // Mock class for testing
 class TestGeminiServiceError extends Error {
-  code: 'missing_api_key' | 'invalid_api_key' | 'expired_api_key' | 'request_failed';
+  code:
+    | 'missing_api_key'
+    | 'invalid_api_key'
+    | 'expired_api_key'
+    | 'request_failed';
   constructor(
-    code: 'missing_api_key' | 'invalid_api_key' | 'expired_api_key' | 'request_failed',
+    code:
+      | 'missing_api_key'
+      | 'invalid_api_key'
+      | 'expired_api_key'
+      | 'request_failed',
     message: string
   ) {
     super(message);
@@ -107,15 +118,15 @@ describe('geminiService - readGeminiApiKey', () => {
 
   it('should return valid when a proper API key is provided', () => {
     const mockEnv = {
-      VITE_GEMINI_API_KEY: 'valid_api_key_12345',
+      VITE_GEMINI_API_KEY: 'valid_token_12345',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(true);
-    expect(result.apiKey).toBe('valid_api_key_12345');
+    expect(result.apiKey).toBe('valid_token_12345');
     expect(result.errorCode).toBeUndefined();
   });
 
@@ -123,11 +134,11 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: '',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('missing');
     expect(result.errorMessage).toContain('eksik');
@@ -137,11 +148,11 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: 'PLACEHOLDER_API_KEY',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('placeholder');
     expect(result.errorMessage).toContain('Geçerli bir Gemini API anahtarı');
@@ -151,11 +162,11 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: 'YOUR_API_KEY_HERE',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('placeholder');
   });
@@ -164,11 +175,11 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: 'API_KEY',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('placeholder');
   });
@@ -177,11 +188,11 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: 'YOUR_GEMINI_API_KEY',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('placeholder');
   });
@@ -190,11 +201,11 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: 'GEMINI_API_KEY',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('placeholder');
   });
@@ -203,11 +214,11 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: 'INSERT_YOUR_API_KEY',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('placeholder');
   });
@@ -216,11 +227,11 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: 'abc',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('placeholder');
   });
@@ -229,92 +240,92 @@ describe('geminiService - readGeminiApiKey', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: 'XXXXX',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('placeholder');
   });
 
   it('should return invalid_format error for key shorter than 10 characters', () => {
     const mockEnv = {
-      VITE_GEMINI_API_KEY: 'shortkey',
+      VITE_GEMINI_API_KEY: 'shortab',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('invalid_format');
     expect(result.errorMessage).toContain('çok kısa');
   });
 
-  it('should check GEMINI_API_KEY as fallback', () => {
+  it('should not use GEMINI_API_KEY as fallback', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: '',
       GEMINI_API_KEY: 'fallback_key_12345',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
-    expect(result.isValid).toBe(true);
-    expect(result.apiKey).toBe('fallback_key_12345');
+
+    expect(result.isValid).toBe(false);
+    expect(result.errorCode).toBe('missing');
   });
 
-  it('should check API_KEY as second fallback', () => {
+  it('should not use API_KEY as fallback', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: '',
       GEMINI_API_KEY: '',
-      API_KEY: 'last_resort_key_12345'
+      API_KEY: 'last_resort_key_12345',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
-    expect(result.isValid).toBe(true);
-    expect(result.apiKey).toBe('last_resort_key_12345');
+
+    expect(result.isValid).toBe(false);
+    expect(result.errorCode).toBe('missing');
   });
 
   it('should handle non-string values gracefully', () => {
     const mockEnv = {
       VITE_GEMINI_API_KEY: null,
       GEMINI_API_KEY: undefined,
-      API_KEY: 12345
+      API_KEY: 12345,
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv as any);
-    
+
     expect(result.isValid).toBe(false);
     expect(result.errorCode).toBe('missing');
   });
 
   it('should prioritize VITE_GEMINI_API_KEY over other keys', () => {
     const mockEnv = {
-      VITE_GEMINI_API_KEY: 'primary_key_12345',
-      GEMINI_API_KEY: 'secondary_key_12345',
-      API_KEY: 'tertiary_key_12345'
+      VITE_GEMINI_API_KEY: 'primary_val_12345',
+      GEMINI_API_KEY: 'secondary_val_12345',
+      API_KEY: 'tertiary_val_12345',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(true);
-    expect(result.apiKey).toBe('primary_key_12345');
+    expect(result.apiKey).toBe('primary_val_12345');
   });
 
   it('should trim whitespace from API key', () => {
     const mockEnv = {
-      VITE_GEMINI_API_KEY: '  trimmed_key_12345  ',
+      VITE_GEMINI_API_KEY: '  trimmed_val_12345  ',
       GEMINI_API_KEY: '',
-      API_KEY: ''
+      API_KEY: '',
     };
-    
+
     const result = readGeminiApiKeyLogic(mockEnv);
-    
+
     expect(result.isValid).toBe(true);
-    expect(result.apiKey).toBe('trimmed_key_12345');
+    expect(result.apiKey).toBe('trimmed_val_12345');
   });
 });
 
@@ -335,7 +346,9 @@ describe('geminiService - normalizeGeminiError', () => {
   });
 
   it('should return invalid_api_key for "API key not valid" message', () => {
-    const error = new Error('API key not valid. Please check your credentials.');
+    const error = new Error(
+      'API key not valid. Please check your credentials.'
+    );
     const result = normalizeGeminiErrorLogic(error);
 
     expect(result.code).toBe('invalid_api_key');
@@ -343,7 +356,10 @@ describe('geminiService - normalizeGeminiError', () => {
   });
 
   it('should return the same GeminiServiceError if already normalized', () => {
-    const originalError = new TestGeminiServiceError('missing_api_key', 'Test error message');
+    const originalError = new TestGeminiServiceError(
+      'missing_api_key',
+      'Test error message'
+    );
     const result = normalizeGeminiErrorLogic(originalError);
 
     expect(result).toBe(originalError);
@@ -378,7 +394,10 @@ describe('geminiService - normalizeGeminiError', () => {
   });
 
   it('should handle object errors', () => {
-    const result = normalizeGeminiErrorLogic({ code: 'ERR_UNKNOWN', data: 'test' } as any);
+    const result = normalizeGeminiErrorLogic({
+      code: 'ERR_UNKNOWN',
+      data: 'test',
+    } as any);
 
     expect(result.code).toBe('request_failed');
   });

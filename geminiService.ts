@@ -1,6 +1,5 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
-import { GeminiServiceError } from "./types";
+import { GoogleGenAI, Type } from '@google/genai';
+import { GeminiServiceError } from './types';
 
 const KEEP_WITH_NEXT_TOKEN = '<<<KEEP_WITH_NEXT>>>';
 const PAGE_BREAK_TOKEN = '<<<PAGE_BREAK>>>';
@@ -22,7 +21,8 @@ const PLACEHOLDER_KEYS = [
 const isPlaceholderKey = (value: string): boolean => {
   const lower = value.toLowerCase().trim();
   // Check against known placeholder patterns
-  if (PLACEHOLDER_KEYS.some(pk => lower.includes(pk.toLowerCase()))) return true;
+  if (PLACEHOLDER_KEYS.some((pk) => lower.includes(pk.toLowerCase())))
+    return true;
   // Pattern: api_key, your_key, insert_key_here, xxx, test
   if (/(your_|insert_)?(api_)?key(_here)?/.test(lower)) return true;
   if (/^x+$/i.test(lower)) return true;
@@ -32,11 +32,7 @@ const isPlaceholderKey = (value: string): boolean => {
 
 const readGeminiApiKey = (): ApiKeyValidationResult => {
   const env = (import.meta as any).env ?? {};
-  const candidates = [
-    env.VITE_GEMINI_API_KEY,
-    env.GEMINI_API_KEY,
-    env.API_KEY
-  ];
+  const candidates = [env.VITE_GEMINI_API_KEY];
 
   for (const candidate of candidates) {
     const value = typeof candidate === 'string' ? candidate.trim() : '';
@@ -49,7 +45,8 @@ const readGeminiApiKey = (): ApiKeyValidationResult => {
       return {
         isValid: false,
         errorCode: 'placeholder',
-        errorMessage: 'Geçerli bir Gemini API anahtarı tanımlayın. "PLACEHOLDER_API_KEY" veya benzeri anahtar kullanmayın.'
+        errorMessage:
+          'Geçerli bir Gemini API anahtarı tanımlayın. "PLACEHOLDER_API_KEY" veya benzeri anahtar kullanmayın.',
       };
     }
 
@@ -57,7 +54,8 @@ const readGeminiApiKey = (): ApiKeyValidationResult => {
       return {
         isValid: false,
         errorCode: 'invalid_format',
-        errorMessage: 'Tanımlanan Gemini API anahtarı çok kısa. Geçerli bir API anahtarı kullanın.'
+        errorMessage:
+          'Tanımlanan Gemini API anahtarı çok kısa. Geçerli bir API anahtarı kullanın.',
       };
     }
 
@@ -67,7 +65,8 @@ const readGeminiApiKey = (): ApiKeyValidationResult => {
   return {
     isValid: false,
     errorCode: 'missing',
-    errorMessage: 'Gemini API anahtarı eksik. `.env` veya `.env.local` dosyasında VITE_GEMINI_API_KEY, GEMINI_API_KEY veya API_KEY tanımlayın.'
+    errorMessage:
+      'Gemini API anahtarı eksik. `.env` veya `.env.local` dosyasında VITE_GEMINI_API_KEY tanımlayın.',
   };
 };
 
@@ -80,12 +79,18 @@ interface ApiKeyValidationResult {
 
 const getGeminiClient = (): GoogleGenAI | null => {
   const result = readGeminiApiKey();
-  
+
   if (!result.isValid) {
-    const errorCode = result.errorCode === 'missing' ? 'missing_api_key' 
-      : result.errorCode === 'placeholder' ? 'invalid_api_key'
-      : 'invalid_api_key';
-    throw new GeminiServiceError(errorCode, result.errorMessage || 'Gemini API anahtarı geçersiz.');
+    const errorCode =
+      result.errorCode === 'missing'
+        ? 'missing_api_key'
+        : result.errorCode === 'placeholder'
+          ? 'invalid_api_key'
+          : 'invalid_api_key';
+    throw new GeminiServiceError(
+      errorCode,
+      result.errorMessage || 'Gemini API anahtarı geçersiz.'
+    );
   }
 
   return new GoogleGenAI({ apiKey: result.apiKey! });
@@ -118,7 +123,9 @@ const normalizeGeminiError = (error: unknown): GeminiServiceError => {
   );
 };
 
-export const enhanceMarkdownContent = async (content: string): Promise<string> => {
+export const enhanceMarkdownContent = async (
+  content: string
+): Promise<string> => {
   try {
     const ai = getGeminiClient();
     if (!ai) return content;
@@ -137,17 +144,19 @@ export const enhanceMarkdownContent = async (content: string): Promise<string> =
       ${content}`,
       config: {
         temperature: 0.2,
-      }
+      },
     });
 
     return response.text || content;
   } catch (error) {
-    console.error("Gemini AI Enhancement Error:", error);
+    console.error('Gemini AI Enhancement Error:', error);
     throw normalizeGeminiError(error);
   }
 };
 
-export const prepareMarkdownForPdfLayout = async (content: string): Promise<string> => {
+export const prepareMarkdownForPdfLayout = async (
+  content: string
+): Promise<string> => {
   try {
     const ai = getGeminiClient();
     if (!ai) return content;
@@ -171,20 +180,22 @@ export const prepareMarkdownForPdfLayout = async (content: string): Promise<stri
       ${content}`,
       config: {
         temperature: 0.1,
-      }
+      },
     });
 
     return response.text || content;
   } catch (error) {
-    console.error("Gemini PDF Layout Error:", error);
+    console.error('Gemini PDF Layout Error:', error);
     throw normalizeGeminiError(error);
   }
 };
 
-export const generateMermaidFromDescription = async (description: string): Promise<string> => {
+export const generateMermaidFromDescription = async (
+  description: string
+): Promise<string> => {
   try {
     const ai = getGeminiClient();
-    if (!ai) return "";
+    if (!ai) return '';
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -194,9 +205,9 @@ export const generateMermaidFromDescription = async (description: string): Promi
       
       Description: ${description}`,
     });
-    return response.text || "";
+    return response.text || '';
   } catch (error) {
-    console.error("Gemini AI Mermaid Error:", error);
+    console.error('Gemini AI Mermaid Error:', error);
     throw normalizeGeminiError(error);
   }
 };
