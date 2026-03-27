@@ -27,6 +27,8 @@ body {
 .prose-pdf h3 {
     page-break-after: avoid;
     break-after: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
 .prose-pdf h1 {
@@ -52,6 +54,8 @@ body {
     text-align: justify;
     widows: 2;
     orphans: 2;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
 .prose-pdf table {
@@ -105,6 +109,14 @@ body {
     height: 0;
     margin: 0;
     border: none;
+}
+
+.content-section {
+    display: block;
+}
+
+.content-section + .content-section {
+    margin-top: 0.35rem;
 }
 
 .prose-pdf img {
@@ -267,6 +279,15 @@ body {
         text-align: justify !important;
         hyphens: auto !important;
         box-sizing: border-box !important;
+    }
+
+    .content-section {
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+    }
+
+    .content-section + .content-section {
+        margin-top: 0 !important;
     }
 
     /* Automatic Page Numbering */

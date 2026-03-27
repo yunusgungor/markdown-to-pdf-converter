@@ -24,10 +24,10 @@ import {
 } from 'lucide-react';
 
 import Mermaid from './components/Mermaid';
-import { enhanceMarkdownContent } from './geminiService';
-import { AppStatus, ProcessingState, Theme } from './types';
-// @ts-ignore
-import html2pdf from 'html2pdf.js';
+import { enhanceMarkdownContent, prepareMarkdownForPdfLayout } from './geminiService';
+import { AppStatus, GeminiServiceError, ProcessingState, Theme } from './types';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 const INITIAL_MD = `# 🚀 Profesyonel PDF Dönüştürücü
 
@@ -63,6 +63,290 @@ graph LR
 > Not: PDF çıktısı her zaman profesyonel beyaz kağıt standardında üretilir.
 `;
 
+const PAGE_BREAK_TOKEN = '<<<PAGE_BREAK>>>';
+const KEEP_WITH_NEXT_TOKEN = '<<<KEEP_WITH_NEXT>>>';
+
+type MarkdownSection =
+  | { type: 'section'; content: string; keepWithNext: boolean }
+  | { type: 'page-break' };
+
+const splitMarkdownIntoBlocks = (content: string): string[] => {
+  const lines = content.split(/\r?\n/);
+  const blocks: string[] = [];
+  let currentBlock: string[] = [];
+  let inCodeFence = false;
+
+  const flushBlock = () => {
+    const block = currentBlock.join('\n').trim();
+    if (block) {
+      blocks.push(block);
+    }
+    currentBlock = [];
+  };
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+
+    if (trimmedLine.startsWith('```')) {
+      inCodeFence = !inCodeFence;
+    }
+
+    if (!inCodeFence && (trimmedLine === PAGE_BREAK_TOKEN || trimmedLine === `<<<PAGE_BREAK>>>`)) {
+      flushBlock();
+      blocks.push(PAGE_BREAK_TOKEN);
+      continue;
+    }
+
+    if (!inCodeFence && (trimmedLine === KEEP_WITH_NEXT_TOKEN || trimmedLine === `<<<KEEP_WITH_NEXT>>>`)) {
+      flushBlock();
+      blocks.push(KEEP_WITH_NEXT_TOKEN);
+      continue;
+    }
+
+    if (!inCodeFence && trimmedLine === '') {
+      flushBlock();
+      continue;
+    }
+
+    currentBlock.push(line);
+  }
+
+  flushBlock();
+
+  return blocks;
+};
+
+const createMarkdownSections = (content: string): MarkdownSection[] => {
+  const safeContent = content.trim() ? content : '_Doküman boş._';
+  const blocks = splitMarkdownIntoBlocks(safeContent);
+  const sections: MarkdownSection[] = [];
+  let keepWithNext = false;
+
+  for (const block of blocks) {
+    if (block === PAGE_BREAK_TOKEN || block === `<<<PAGE_BREAK>>>`) {
+      sections.push({ type: 'page-break' });
+      keepWithNext = false;
+      continue;
+    }
+
+    if (block === KEEP_WITH_NEXT_TOKEN || block === `<<<KEEP_WITH_NEXT>>>`) {
+      keepWithNext = true;
+      continue;
+    }
+
+    sections.push({
+      type: 'section',
+      content: block,
+      keepWithNext: keepWithNext || /^#{1,6}\s/.test(block)
+    });
+    keepWithNext = false;
+  }
+
+  return sections.length > 0 ? sections : [{ type: 'section', content: safeContent, keepWithNext: false }];
+};
+
+const createPaginatedExportRoot = (
+  sourceNode: HTMLDivElement,
+  mountContainer: HTMLDivElement
+): HTMLDivElement => {
+  const PAGE_SAFETY_BUFFER_PX = 20;
+
+  const exportRoot = document.createElement('div');
+  exportRoot.style.width = '210mm';
+  exportRoot.style.maxWidth = '210mm';
+  exportRoot.style.background = '#ffffff';
+  exportRoot.style.margin = '0';
+  exportRoot.style.padding = '0';
+  mountContainer.replaceChildren(exportRoot);
+
+  const sourceWidthPx = sourceNode.getBoundingClientRect().width || 794;
+  const pageHeightPx = Math.round((sourceWidthPx * 297) / 210);
+  const sourceStyles = window.getComputedStyle(sourceNode);
+  const paddingTop = parseFloat(sourceStyles.paddingTop || '20mm') * 3.7795275591;
+  const paddingBottom = parseFloat(sourceStyles.paddingBottom || '20mm') * 3.7795275591;
+  const maxContentHeightPx = Math.max(pageHeightPx - paddingTop - paddingBottom - PAGE_SAFETY_BUFFER_PX, 200);
+  type ExportUnit =
+    | { type: 'page-break' }
+    | { type: 'content'; node: HTMLDivElement; height: number; keepWithNext: boolean };
+
+  const createPage = () => {
+    const page = sourceNode.cloneNode(false) as HTMLDivElement;
+    page.classList.add('pdf-page');
+    page.style.width = '210mm';
+    page.style.maxWidth = '210mm';
+    page.style.minHeight = '297mm';
+    page.style.height = `${pageHeightPx}px`;
+    page.style.margin = '0';
+    page.style.boxShadow = 'none';
+    page.style.borderRadius = '0';
+    page.style.overflow = 'hidden';
+    page.style.breakAfter = 'page';
+    page.style.pageBreakAfter = 'always';
+    return page;
+  };
+
+  const getElementOuterHeight = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const styles = window.getComputedStyle(element);
+    const marginTop = parseFloat(styles.marginTop || '0');
+    const marginBottom = parseFloat(styles.marginBottom || '0');
+    return rect.height + marginTop + marginBottom;
+  };
+
+  const exportUnits: ExportUnit[] = [];
+
+  for (const child of Array.from(sourceNode.children) as HTMLDivElement[]) {
+    if (child.classList.contains('page-break')) {
+      exportUnits.push({ type: 'page-break' });
+      continue;
+    }
+
+    exportUnits.push({
+      type: 'content',
+      node: child.cloneNode(true) as HTMLDivElement,
+      height: Math.max(getElementOuterHeight(child), 1),
+      keepWithNext: child.classList.contains('keep-with-next')
+    });
+  }
+
+  let currentPage = createPage();
+  let currentApproxHeight = 0;
+  exportRoot.appendChild(currentPage);
+
+  for (let unitIndex = 0; unitIndex < exportUnits.length; unitIndex += 1) {
+    const unit = exportUnits[unitIndex];
+    if (unit.type === 'page-break') {
+      if (currentPage.childElementCount === 0) {
+        continue;
+      }
+
+      currentPage = createPage();
+      currentApproxHeight = 0;
+      exportRoot.appendChild(currentPage);
+      continue;
+    }
+
+    const nextUnit = exportUnits[unitIndex + 1];
+    const nextHeight = nextUnit && nextUnit.type === 'content' ? nextUnit.height : 0;
+    const shouldMoveUnitToNextPage =
+      unit.keepWithNext &&
+      currentApproxHeight > 0 &&
+      currentApproxHeight + unit.height + nextHeight > maxContentHeightPx;
+
+    if (shouldMoveUnitToNextPage) {
+      currentPage = createPage();
+      currentApproxHeight = 0;
+      exportRoot.appendChild(currentPage);
+    }
+
+    const blockClone = unit.node.cloneNode(true) as HTMLDivElement;
+    currentPage.appendChild(blockClone);
+
+    if (currentPage.scrollHeight <= currentPage.clientHeight + 1) {
+      currentApproxHeight += unit.height;
+      continue;
+    }
+
+    currentPage.removeChild(blockClone);
+
+    if (currentPage.childElementCount > 0) {
+      currentPage = createPage();
+      currentApproxHeight = 0;
+      exportRoot.appendChild(currentPage);
+      currentPage.appendChild(blockClone);
+      currentApproxHeight += unit.height;
+    } else if (unit.height > maxContentHeightPx) {
+      const firstChildTag = blockClone.firstElementChild?.tagName?.toLowerCase();
+      const canOverflowSinglePage = firstChildTag !== 'p' && firstChildTag !== 'li';
+
+      if (canOverflowSinglePage) {
+        currentPage.appendChild(blockClone);
+        currentPage.style.height = 'auto';
+        currentPage.style.overflow = 'visible';
+        currentPage.style.minHeight = '297mm';
+
+        currentPage = createPage();
+        currentApproxHeight = 0;
+        exportRoot.appendChild(currentPage);
+      } else {
+        currentPage.appendChild(blockClone);
+        currentApproxHeight += unit.height;
+      }
+    } else {
+      currentPage.appendChild(blockClone);
+      currentApproxHeight += unit.height;
+    }
+  }
+
+  if (currentPage.childElementCount === 0) {
+    currentPage.remove();
+  }
+
+  const pages = Array.from(exportRoot.querySelectorAll('.pdf-page')) as HTMLDivElement[];
+  const lastPage = pages[pages.length - 1];
+  if (lastPage) {
+    lastPage.style.breakAfter = 'auto';
+    lastPage.style.pageBreakAfter = 'auto';
+  }
+
+  return exportRoot;
+};
+
+const exportCanvasSlicesToPdf = async (
+  element: HTMLDivElement,
+  pdf: jsPDF,
+  startWithBlankDocument: boolean
+) => {
+  const fullCanvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    scrollX: 0,
+    scrollY: 0,
+    windowWidth: element.scrollWidth,
+    windowHeight: element.scrollHeight
+  });
+
+  const pageHeightPx = Math.floor((fullCanvas.width * 297) / 210);
+  let offsetY = 0;
+  let pageIndex = 0;
+
+  while (offsetY < fullCanvas.height) {
+    const sliceCanvas = document.createElement('canvas');
+    sliceCanvas.width = fullCanvas.width;
+    sliceCanvas.height = pageHeightPx;
+
+    const context = sliceCanvas.getContext('2d');
+    if (!context) {
+      throw new Error('Canvas context unavailable');
+    }
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+    context.drawImage(
+      fullCanvas,
+      0,
+      offsetY,
+      fullCanvas.width,
+      Math.min(pageHeightPx, fullCanvas.height - offsetY),
+      0,
+      0,
+      fullCanvas.width,
+      Math.min(pageHeightPx, fullCanvas.height - offsetY)
+    );
+
+    const imageData = sliceCanvas.toDataURL('image/jpeg', 0.98);
+
+    if (!startWithBlankDocument || pageIndex > 0) {
+      pdf.addPage('a4', 'portrait');
+    }
+
+    pdf.addImage(imageData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    offsetY += pageHeightPx;
+    pageIndex += 1;
+  }
+};
+
 const App: React.FC = () => {
   const [markdown, setMarkdown] = useState(INITIAL_MD);
   const [title, setTitle] = useState("Döküman Analiz Raporu");
@@ -70,12 +354,14 @@ const App: React.FC = () => {
   const [editorWidth, setEditorWidth] = useState(window.innerWidth * 0.4);
   const [isEditorVisible, setIsEditorVisible] = useState(true);
   const [isResizing, setIsResizing] = useState(false);
+  const [exportMarkdown, setExportMarkdown] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('app-theme');
     return (saved as Theme) || Theme.LIGHT;
   });
 
   const previewRef = useRef<HTMLDivElement>(null);
+  const exportPreviewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,24 +407,100 @@ const App: React.FC = () => {
       setStatus({ status: AppStatus.IDLE, message: 'İçerik zenginleştirildi!' });
       setTimeout(() => setStatus({ status: AppStatus.IDLE }), 3000);
     } catch (err) {
-      setStatus({ status: AppStatus.ERROR, message: 'AI işlemi başarısız.' });
+      const message =
+        err instanceof GeminiServiceError
+          ? err.message
+          : 'AI işlemi başarısız.';
+      setStatus({ status: AppStatus.ERROR, message });
     }
   };
 
   const exportToPdf = async () => {
-    setStatus({ status: AppStatus.EXPORTING, message: 'Yazdırma menüsü hazırlanıyor...' });
+    setStatus({ status: AppStatus.EXPORTING, message: 'AI destekli PDF düzeni hazırlanıyor...' });
+    let exportContainer: HTMLDivElement | null = null;
 
-    // Küçük bir gecikme ile UI'ın/Status'un güncellenmesini bekle
-    setTimeout(() => {
+    try {
+      let preparedMarkdown = markdown;
       try {
-        window.print();
-        setStatus({ status: AppStatus.IDLE, message: 'Hazır' });
-        setTimeout(() => setStatus({ status: AppStatus.IDLE }), 2000);
+        preparedMarkdown = await prepareMarkdownForPdfLayout(markdown);
       } catch (err) {
-        console.error('Print Error:', err);
-        setStatus({ status: AppStatus.ERROR, message: 'Yazdırma hatası' });
+        const fallbackMessage =
+          err instanceof GeminiServiceError
+            ? `${err.message} Yerel PDF düzenine geçiliyor...`
+            : 'AI düzeni hazırlanamadı. Yerel PDF düzenine geçiliyor...';
+        setStatus({ status: AppStatus.EXPORTING, message: fallbackMessage });
       }
-    }, 500);
+      setExportMarkdown(preparedMarkdown);
+
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+      await new Promise(resolve => requestAnimationFrame(() => resolve(null)));
+      await new Promise(resolve => setTimeout(resolve, 250));
+
+      const sourceElement = exportPreviewRef.current;
+      if (!sourceElement) {
+        throw new Error('Export preview unavailable');
+      }
+
+      exportContainer = document.createElement('div');
+      exportContainer.style.position = 'fixed';
+      exportContainer.style.left = '-99999px';
+      exportContainer.style.top = '0';
+      exportContainer.style.width = '210mm';
+      exportContainer.style.background = '#ffffff';
+      exportContainer.style.padding = '0';
+      exportContainer.style.margin = '0';
+      exportContainer.style.zIndex = '-1';
+      document.body.appendChild(exportContainer);
+
+      const paginatedRoot = createPaginatedExportRoot(sourceElement, exportContainer);
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+
+      const pages = Array.from(paginatedRoot.querySelectorAll('.pdf-page')) as HTMLDivElement[];
+
+      if (pages.length <= 1) {
+        exportContainer.replaceChildren(sourceElement.cloneNode(true) as HTMLDivElement);
+        const fallbackElement = exportContainer.firstElementChild as HTMLDivElement;
+        await exportCanvasSlicesToPdf(fallbackElement, pdf, true);
+      } else {
+        for (let index = 0; index < pages.length; index += 1) {
+          const page = pages[index];
+          const canvas = await html2canvas(page, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: page.scrollWidth,
+            windowHeight: page.scrollHeight
+          });
+
+          const imageData = canvas.toDataURL('image/jpeg', 0.98);
+
+          if (index > 0) {
+            pdf.addPage('a4', 'portrait');
+          }
+
+          pdf.addImage(imageData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        }
+      }
+
+      pdf.save(`${(title || 'document').trim() || 'document'}.pdf`);
+
+      setStatus({ status: AppStatus.IDLE, message: 'PDF kaydedildi!' });
+      setTimeout(() => setStatus({ status: AppStatus.IDLE }), 2500);
+    } catch (err) {
+      console.error('PDF Export Error:', err);
+      setStatus({ status: AppStatus.ERROR, message: 'PDF oluşturma hatası' });
+    } finally {
+      exportContainer?.remove();
+      setExportMarkdown(null);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,6 +512,34 @@ const App: React.FC = () => {
       setTitle(file.name.replace('.md', ''));
     };
     reader.readAsText(file);
+  };
+
+  const markdownSections = createMarkdownSections(markdown);
+  const exportSections = createMarkdownSections(exportMarkdown ?? markdown);
+
+  const markdownComponents = {
+    code({ node, inline, className, children, ...props }: any) {
+      const match = /language-(\w+)/.exec(className || '');
+      if (!inline && match && match[1] === 'mermaid') {
+        return (
+          <div className="mermaid-wrapper my-4 flex justify-center overflow-visible">
+            <Mermaid chart={String(children).replace(/\n$/, '')} />
+          </div>
+        );
+      }
+      return (
+        <code className={`${className} bg-slate-100 text-indigo-600 px-1.5 py-0.5 rounded-md text-[13px] font-mono font-medium`} {...props}>
+          {children}
+        </code>
+      );
+    },
+    table: ({ children }: any) => <div className="table-responsive my-6"><table className="min-w-full">{children}</table></div>,
+    img: ({ src, alt }: any) => (
+      <div className="my-8 flex flex-col items-center">
+        <img src={src} alt={alt} className="shadow-md border border-slate-100" />
+        {alt && <span className="text-[10px] text-slate-400 mt-2 font-medium italic">{alt}</span>}
+      </div>
+    )
   };
 
   return (
@@ -301,41 +691,53 @@ const App: React.FC = () => {
                 ref={previewRef}
                 className="bg-white w-full max-w-[800px] min-h-[1123px] paper-shadow px-[15mm] py-[20mm] md:px-[22mm] md:py-[25mm] text-slate-800 break-words prose-pdf origin-top transition-all hover:shadow-2xl rounded-[2px]"
               >
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[[rehypeKatex, { strict: false }]]}
-                  components={{
-                    code({ node, inline, className, children, ...props }: any) {
-                      const match = /language-(\w+)/.exec(className || '');
-                      if (!inline && match && match[1] === 'mermaid') {
-                        return (
-                          <div className="mermaid-wrapper my-4 flex justify-center overflow-visible">
-                            <Mermaid chart={String(children).replace(/\n$/, '')} />
-                          </div>
-                        );
-                      }
-                      return (
-                        <code className={`${className} bg-slate-100 text-indigo-600 px-1.5 py-0.5 rounded-md text-[13px] font-mono font-medium`} {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                    table: ({ children }) => <div className="table-responsive my-6"><table className="min-w-full">{children}</table></div>,
-                    img: ({ src, alt }) => (
-                      <div className="my-8 flex flex-col items-center">
-                        <img src={src} alt={alt} className="shadow-md border border-slate-100" />
-                        {alt && <span className="text-[10px] text-slate-400 mt-2 font-medium italic">{alt}</span>}
-                      </div>
-                    )
-                  }}
-                >
-                  {markdown || "_Döküman boş._"}
-                </ReactMarkdown>
+                {markdownSections.map((section, index) => {
+                  if (section.type === 'page-break') {
+                    return <div key={`page-break-${index}`} className="page-break" aria-hidden="true" />;
+                  }
+
+                  return (
+                    <section key={`section-${index}`} className={`content-section ${section.keepWithNext ? 'keep-with-next' : ''}`}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[[rehypeKatex, { strict: false }]]}
+                        components={markdownComponents}
+                      >
+                        {section.content}
+                      </ReactMarkdown>
+                    </section>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
       </main>
+
+      <div className="fixed left-[-99999px] top-0 pointer-events-none opacity-0" aria-hidden="true">
+        <div
+          ref={exportPreviewRef}
+          className="bg-white w-[210mm] max-w-[210mm] min-h-[297mm] px-[15mm] py-[20mm] text-slate-800 break-words prose-pdf"
+        >
+          {exportSections.map((section, index) => {
+            if (section.type === 'page-break') {
+              return <div key={`export-page-break-${index}`} className="page-break" aria-hidden="true" />;
+            }
+
+            return (
+              <section key={`export-section-${index}`} className={`content-section ${section.keepWithNext ? 'keep-with-next' : ''}`}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[[rehypeKatex, { strict: false }]]}
+                  components={markdownComponents}
+                >
+                  {section.content}
+                </ReactMarkdown>
+              </section>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Footer Info */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-2 flex items-center justify-between text-[11px] font-bold text-slate-400 dark:text-slate-500 z-30 transition-colors duration-300">
