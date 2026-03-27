@@ -5,7 +5,32 @@ import { GeminiServiceError } from "./types";
 const KEEP_WITH_NEXT_TOKEN = '<<<KEEP_WITH_NEXT>>>';
 const PAGE_BREAK_TOKEN = '<<<PAGE_BREAK>>>';
 
-const readGeminiApiKey = (): string => {
+interface ApiKeyValidationResult {
+  isValid: boolean;
+  apiKey?: string;
+  errorCode?: 'missing' | 'placeholder' | 'invalid_format';
+  errorMessage?: string;
+}
+
+const PLACEHOLDER_KEYS = [
+  'PLACEHOLDER_API_KEY',
+  'YOUR_API_KEY_HERE',
+  'API_KEY',
+  'YOUR_GEMINI_API_KEY',
+  'GEMINI_API_KEY',
+  'INSERT_YOUR_API_KEY',
+];
+
+const isPlaceholderKey = (value: string): boolean => {
+  const lower = value.toLowerCase().trim();
+  if (PLACEHOLDER_KEYS.some(pk => pk.toLowerCase() === lower)) return true;
+  if (/^(your_|insert_)?api_?key(_here)?$/i.test(lower)) return true;
+  if (/^x+$/i.test(lower)) return true;
+  if (lower.length < 5 && /^[a-z0-9]+$/i.test(lower)) return true;
+  return false;
+};
+
+const readGeminiApiKey = (): ApiKeyValidationResult => {
   const env = (import.meta as any).env ?? {};
   const candidates = [
     env.VITE_GEMINI_API_KEY,
@@ -15,24 +40,55 @@ const readGeminiApiKey = (): string => {
 
   for (const candidate of candidates) {
     const value = typeof candidate === 'string' ? candidate.trim() : '';
-    if (!value) continue;
-    if (value === 'PLACEHOLDER_API_KEY') continue;
-    return value;
+
+    if (!value || value.length === 0) {
+      continue;
+    }
+
+    if (isPlaceholderKey(value)) {
+      return {
+        isValid: false,
+        errorCode: 'placeholder',
+        errorMessage: 'Geçerli bir Gemini API anahtarı tanımlayın. "PLACEHOLDER_API_KEY" veya benzeri anahtar kullanmayın.'
+      };
+    }
+
+    if (value.length < 10) {
+      return {
+        isValid: false,
+        errorCode: 'invalid_format',
+        errorMessage: 'Tanımlanan Gemini API anahtarı çok kısa. Geçerli bir API anahtarı kullanın.'
+      };
+    }
+
+    return { isValid: true, apiKey: value };
   }
 
-  return '';
+  return {
+    isValid: false,
+    errorCode: 'missing',
+    errorMessage: 'Gemini API anahtarı eksik. `.env` veya `.env.local` dosyasında VITE_GEMINI_API_KEY, GEMINI_API_KEY veya API_KEY tanımlayın.'
+  };
 };
 
+interface ApiKeyValidationResult {
+  isValid: boolean;
+  apiKey?: string;
+  errorCode?: 'missing' | 'placeholder' | 'invalid_format';
+  errorMessage?: string;
+}
+
 const getGeminiClient = (): GoogleGenAI | null => {
-  const apiKey = readGeminiApiKey();
-  if (!apiKey) {
-    throw new GeminiServiceError(
-      'missing_api_key',
-      'Gemini API anahtarı eksik. `.env` veya `.env.local` içinde geçerli bir anahtar tanımlayın.'
-    );
+  const result = readGeminiApiKey();
+  
+  if (!result.isValid) {
+    const errorCode = result.errorCode === 'missing' ? 'missing_api_key' 
+      : result.errorCode === 'placeholder' ? 'invalid_api_key'
+      : 'invalid_api_key';
+    throw new GeminiServiceError(errorCode, result.errorMessage || 'Gemini API anahtarı geçersiz.');
   }
 
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: result.apiKey! });
 };
 
 const normalizeGeminiError = (error: unknown): GeminiServiceError => {
